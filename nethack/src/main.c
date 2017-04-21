@@ -45,7 +45,9 @@ enum menuitems {
 static struct nh_menuitem mainmenu_items[] = {
     {NEWGAME, MI_NORMAL, "new game", 'n'},
     {LOAD, MI_NORMAL, "load game", 'l'},
+#ifdef PUBLIC_SERVER
     {REPLAY, MI_NORMAL, "view replay", 'v'},
+#endif
     {OPTIONS, MI_NORMAL, "set options", 'o'},
     {TOPTEN, MI_NORMAL, "show score list", 's'},
 #if defined(NETCLIENT)
@@ -200,6 +202,7 @@ init_game_paths(const char *argv0)
             pathlist[LOCKPREFIX] = override_hackdir;
             pathlist[TROUBLEPREFIX] = override_hackdir;
         }
+# ifndef PUBLIC_SERVER
         if (override_userdir) {
             /* player-specific */
             pathlist[DUMPPREFIX] = override_userdir;
@@ -207,6 +210,7 @@ init_game_paths(const char *argv0)
                those as filenames to the engine; rather, get_gamedir looks at
                them */
         }
+# endif
 #ifdef UNIX
     }
 #endif
