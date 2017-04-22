@@ -59,7 +59,9 @@ static struct nh_menuitem mainmenu_items[] = {
 static struct nh_menuitem mainmenu_items_noclient[] = {
     {NEWGAME, MI_NORMAL, "new game", 'n'},
     {LOAD, MI_NORMAL, "load game", 'l'},
+#ifndef PUBLIC_SERVER
     {REPLAY, MI_NORMAL, "view replay", 'v'},
+#endif
     {OPTIONS, MI_NORMAL, "set options", 'o'},
     {TOPTEN, MI_NORMAL, "show score list", 's'},
     {EXITGAME, MI_NORMAL, "quit", 'q', 'x'}
