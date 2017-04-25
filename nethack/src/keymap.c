@@ -6,7 +6,7 @@
 #include "nhcurses.h"
 #include "common_options.h"
 
-#ifdef PUBLIC_SERVER
+#ifdef UNIX
 # include <sys/stat.h>
 #endif
 #include <sys/types.h>
@@ -1089,7 +1089,7 @@ write_keymap(void)
     if (fd == -1)
         return;
 
-#if defined(PUBLIC_SERVER) && defined(UNIX)
+#ifdef UNIX
     fchmod(fd, 0644);
 #endif
 
