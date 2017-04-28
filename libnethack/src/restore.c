@@ -820,8 +820,10 @@ restore_flags(struct memfile *mf, struct flag *f)
     f->actions = mread8(mf);
     f->save_encoding = mread8(mf);
 
+    f->servermail = mread8(mf);
+
     /* Ignore the padding added in save.c */
-    for (i = 0; i < 110; i++)
+    for (i = 0; i < 109; i++)
         (void) mread8(mf);
 
     mread(mf, f->setseed, sizeof (f->setseed));
