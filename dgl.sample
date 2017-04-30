@@ -1,0 +1,22 @@
+DEFINE {
+  game_path = "/nh4dir/nethack4"
+  game_name = "NetHack 4"
+  short_name = "nh4"
+
+  game_args = "/nh4dir/nethack4", "-U", "%ruserdata/%N/%n/nethack4"
+
+  spooldir = "/mail/"
+
+  inprogressdir = "%rinprogress-nh4/"
+  extra_info_file = "%rextrainfo-nh4/%n.extrainfo"
+
+  ttyrecdir = "%ruserdata/%N/%n/nethack4/ttyrec/"
+
+  commands = setenv "NH4SERVERUSER" "%n",
+             mkdir "%ruserdata/%N/%n/nethack4",
+             mkdir "%ruserdata/%N/%n/nethack4/ttyrec",
+             setenv "MAIL" "/mail/%n",
+             setenv "SIMPLEMAIL" "1",
+             unlink "/mail/%n"
+}
+

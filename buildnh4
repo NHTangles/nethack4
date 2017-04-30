@@ -1,0 +1,19 @@
+#!/bin/sh
+
+cd ~/nethack4
+mkdir -p build
+cd build
+
+export CFLAGS="-O2 -Wall -Wextra -fdiagnostics-show-option -g"
+export CPPFLAGS="-DPUBLIC_SERVER -DDUMPDIR=\"dumplog/\" -DMAILBOXENVVAR=\"MAIL\""
+nice -n 20 ../aimake --with=tilecompile -i /nh4dir --destdir /opt/nethack/hardfought.org -S sudo 2>&1 | tee ../output-4304-dirtybuild.txt
+cd /opt/nethack/hardfought.org/nh4dir
+sudo chmod 755 nethack4
+sudo chown -R games:games save
+sudo chrootlibs.sh nethack4 lib/*
+
+sudo mkdir -p /opt/nethack/hardfought.org/dgldir/inprogress-nh4
+sudo chown -R games:games /opt/nethack/hardfought.org/dgldir/inprogress-nh4
+sudo mkdir -p /opt/nethack/hardfought.org/dgldir/extrainfo-nh4
+sudo chown -R games:games  /opt/nethack/hardfought.org/dgldir/extrainfo-nh4
+
