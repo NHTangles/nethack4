@@ -1,8 +1,9 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-05-31 */
+/* Last modified by Fredrik Ljungdahl, 2018-01-05 */
 /* Copyright (c) Daniel Thaler, 2011.                             */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#include "mail.h"
 #include "nhcurses.h"
 #include <signal.h>
 #include <locale.h>
@@ -39,7 +40,6 @@ struct nh_window_procs curses_windowprocs = {
     curses_load_progress,
     curses_notify_level_changed,
     curses_outrip,
-    curses_print_message_nonblocking,
     curses_server_cancel,
 };
 
@@ -405,7 +405,9 @@ init_curses_ui(const char *dataprefix)
     }
 
     tileprefix = strdup(dataprefix);
-    set_font_file("font14.png");
+    char font_file[BUFSZ];
+    snprintf(font_file, BUFSZ, "font%s.png", settings.fontfile);
+    set_font_file(font_file);
     setup_tiles();
 
     setup_palette();
@@ -573,7 +575,7 @@ nh_mvwaddch(WINDOW *win, int y, int x, enum framechars which)
     mvwadd_wch(win, y, x, &c);
 }
 
-static void
+void
 draw_frame(void)
 {
     int framewidth = !!ui_flags.draw_outer_frame_lines;
@@ -607,7 +609,7 @@ draw_frame(void)
 
     if (ui_flags.draw_horizontal_frame_lines) {
         /* If we have vertical lines but not an outer frame, or vice versa,
-           connecting just one end of the lines looks ugly, so we leave the
+           connecting just one end of the lines looks ugly, so we leave them
            disconnected. Exception: if both ends touch the frame, we don't
            care about vertical lines. */
         nh_bool connectends = framewidth &&
@@ -615,6 +617,7 @@ draw_frame(void)
 
         y += ui_flags.msgheight;
         nh_mvwhline(basewin, y, x, ui_flags.mapwidth);
+
         if (connectends) {
             nh_mvwaddch(basewin, y, 0, FC_LTEE);
             nh_mvwaddch(basewin, y, ui_flags.mapwidth + 1, FC_RTEE);
@@ -622,6 +625,42 @@ draw_frame(void)
 
         y += 1 + ui_flags.mapheight;
         nh_mvwhline(basewin, y, x, ui_flags.mapwidth);
+        if (ui_flags.current_followmode == FM_WATCH) {
+            wattron(basewin, A_BOLD | COLOR_PAIR(4));
+            mvwprintw(basewin, y, 2, "WATCH MODE");
+
+            const char *delim = " (";
+            const char *player = getenv("NH4SERVERUSER");
+            if (!player || !*player)
+                player = getenv("USER");
+            if (player && *player) {
+                wprintw(basewin, "%swatching %s", delim, player);
+                delim = ", ";
+            }
+
+            char keybind[BUFSZ];
+            if (mail_filename(NULL) &&
+                (get_command_key("mail", keybind, FALSE) ||
+                 get_command_key("moveonly", keybind, FALSE))) {
+                wprintw(basewin, "%s'%s' to mail", delim, keybind);
+                delim = ", ";
+            }
+
+            if (get_command_key("save", keybind, FALSE) ||
+                get_command_key("drink", keybind, FALSE)) {
+                wprintw(basewin, "%s'%s' to stop watching", delim, keybind);
+                delim = ", ";
+            }
+
+            /* end parenthesis */
+            if (!strcmp(delim, ", "))
+                wprintw(basewin, ")");
+            wattroff(basewin, A_BOLD | COLOR_PAIR(4));
+        } else if (ui_flags.current_followmode == FM_REPLAY) {
+            wattron(basewin, A_BOLD | COLOR_PAIR(4));
+            mvwprintw(basewin, y, 2, "REPLAY MODE");
+            wattroff(basewin, A_BOLD | COLOR_PAIR(4));
+        }
         if (connectends) {
             nh_mvwaddch(basewin, y, 0, FC_LTEE);
             nh_mvwaddch(basewin, y, ui_flags.mapwidth + 1, FC_RTEE);
@@ -1069,7 +1108,6 @@ create_game_windows(void)
     create_or_resize_game_windows(newwin_wrapper);
     ui_flags.ingame = TRUE;
     ui_flags.maphoverx = ui_flags.maphovery = -1;
-    setup_showlines();
     redraw_game_windows();
 }
 
@@ -1108,7 +1146,6 @@ resize_game_windows(void)
     if (extrawin)
         leaveok(extrawin, TRUE);
 
-    redo_showlines();
     redraw_game_windows();
 }
 
@@ -1133,7 +1170,6 @@ destroy_game_windows(void)
 
     ui_flags.ingame = FALSE;
 }
-
 
 void
 redraw_popup_windows(void)
@@ -1183,12 +1219,23 @@ redraw_game_windows(void)
 void
 rebuild_ui(void)
 {
+    if (tileprefix) {
+        char font_file[BUFSZ];
+        snprintf(font_file, BUFSZ, "font%s.png", settings.fontfile);
+        set_font_file(font_file);
+        refresh();
+    }
+
     if (ui_flags.ingame) {
         wclear(basewin);
         resize_game_windows();
 
+        /* if the message window was resized horizontally, we need to reposition
+           the messages within it */
+        reconstruct_message_history(FALSE);
+
         /* some windows are now empty because they were re-created */
-        draw_msgwin();
+        draw_messages_postkey();
         draw_map(player.x, player.y);
         curses_update_status(&player);
         draw_sidebar();
@@ -1238,13 +1285,15 @@ key_is_meaningful_in_context(int key, enum keyreq_context context)
     case krc_interrupt_long_action:
     case krc_keybinding:
         /* ...or which get command arguments, in which case we can't interrupt,
-           really */
+           really... */
     case krc_get_movecmd_direction:
     case krc_count:
-        /* ...or where any button dismisses a prompt */
+        /* ...or where any button dismisses a prompt... */
     case krc_more:            /* do we want this? */
     case krc_pause_map:
     case krc_notification:
+        /* ...or where we want to intercept all keys */
+    case krc_moretab:
         return TRUE;
 
         /* Cases in which all direction commands are meaningful, in addition
@@ -1271,6 +1320,7 @@ key_is_meaningful_in_context(int key, enum keyreq_context context)
     case krc_yn_generic:
     case krc_getlin:
     case krc_menu:
+    case krc_prevmsg:
     case krc_objmenu:
     case krc_query_key_inventory:
     case krc_query_key_inventory_nullable:
@@ -1466,11 +1516,19 @@ nh_wgetch(WINDOW * win, enum keyreq_context context)
 
    Note that alloc_gamewin and delete_gamewin aren't quite opposites (although
    delete_ cancels alloc_'s effect); delete_gamewin deletes the windows itself,
-   whereas alloc_gamewin does not create the windows itself. */
+   whereas alloc_gamewin does not create the windows itself.
 
+   If in-game, this function is also responsible for ensuring that the message
+   buffer is up to date before starting to allocate the window (so that any
+   delayed --More-- that might be pending will happen before the window is
+   created). The caller can suppress this if they need to run alloc_gamewin
+   early for exception safety reasons. */
 struct gamewin *
-alloc_gamewin(int extra)
+alloc_gamewin(int extra, nh_bool handle_messages)
 {
+    if (handle_messages && firstgw == NULL && ui_flags.ingame)
+        draw_messages_prekey(TRUE);
+
     struct gamewin *gw = malloc(sizeof (struct gamewin) + extra);
 
     /* We need to set gw->win in particular to NULL. Otherwise, we might
@@ -1535,11 +1593,14 @@ curses_pause(enum nh_pause_reason reason)
 {
     doupdate();
     if (reason == P_MESSAGE && msgwin != NULL)
-        pause_messages();
+        force_more(FALSE);
     else if (mapwin != NULL) {
         /* P_MAP: pause to show the result of detection or similar. The second
            arg to get_map_key is TRUE to allow this to be dismissed by clicking
            the map. */
+        draw_messages_prekey(TRUE);
+        /* TODO: Should this render a --More--? If so, we could just use
+           force_more(), like in the other case. */
         if (get_map_key(FALSE, TRUE, krc_pause_map) == KEY_SIGNAL)
             uncursed_signal_getch();
     }
