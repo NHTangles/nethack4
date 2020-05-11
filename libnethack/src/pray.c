@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-14 */
+/* Last modified by Alex Smith, 2020-05-12 */
 /* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1048,6 +1048,14 @@ pleased(aligntyp g_align)
 
     if (kick_on_butt)
         u.ublesscnt += kick_on_butt * rnz(1000);
+
+    /* Avoid games that go into infinite loops of copy-pasted commands with no
+       human interaction; this is a DoS vector against the computer running
+       NetHack. Once the turn counter is over 100000, every additional 100 turns
+       increases the prayer timeout by 1, thus eventually nutrition prayers will
+       fail and some other source of nutrition will be required. */
+    if (moves > 100000)
+        u.ublesscnt += (moves - 100000) / 100;
 
     return;
 }
