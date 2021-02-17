@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-07-25 */
+/* Last modified by Alex Smith, 2021-02-17 */
 /* Copyright (c) 2013 Alex Smith. */
 /* The 'uncursed' rendering library may be distributed under either of the
  * following licenses:
@@ -574,7 +574,7 @@ int COLORS = 16;                /* externally visible */
 int COLOR_PAIRS = 32767;        /* externally visible; must fit into 15 bits */
 
 static uncursed_color (*pair_content_list)[2] = 0;   /* dynamically allocated */
-static uncursed_color pair_content_alloc_count = -1;
+static uncursed_color pair_content_alloc_count = -1; /* highest allocated pair number */
 static bool need_noutwin_recolor = true;
 
 int
@@ -642,12 +642,9 @@ init_pair(uncursed_color pairnum,
             default_b = pair_content_list[0][1];
         }
 
-        while (pair_content_alloc_count < pairnum) {
-            if (pair_content_alloc_count >= 0) {
-                pair_content_list[pair_content_alloc_count][0] = default_f;
-                pair_content_list[pair_content_alloc_count][1] = default_b;
-            }
-            pair_content_alloc_count++;
+        while (++pair_content_alloc_count < pairnum) {
+            pair_content_list[pair_content_alloc_count][0] = default_f;
+            pair_content_list[pair_content_alloc_count][1] = default_b;
         }
     }
 
