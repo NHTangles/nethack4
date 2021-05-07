@@ -1,5 +1,5 @@
 About this document:
-Last modified by Alex Smith, 2015-09-04
+Last modified by Alex Smith, 2020-04-30
 
 Copyright (C) 2013 Alex Smith.
 
@@ -295,6 +295,9 @@ need) via running the command
 
 UNIX/Linux/Mac OS X
 -------------------
+
+(Note: The build is currently broken on newer versions of Mac OS X due to
+Apple changing how their toolchain works.)
 
 You will need to install NetHack 4's dependencies: zlib (which is probably
 installed already, but you may need to get its development headers from your

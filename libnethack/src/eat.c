@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-11 */
+/* Last modified by Alex Smith, 2020-05-12 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -2049,6 +2049,13 @@ gethungry(void)
         &&(carnivorous(youmonst.data) || herbivorous(youmonst.data))
         && !Slow_digestion)
         u.uhunger--;    /* ordinary food consumption */
+
+    /* Polyinit into an inediate form gives you "ring hunger" levels of hunger, to
+       ensure that some food clock always exists (either from natural hunger loss,
+       from the ring of slow digestion, or from the amulet of unchanging). */
+    if (!carnivorous(youmonst.data) && !herbivorous(youmonst.data) &&
+        flags.polyinit_mnum != 1 && moves % 20 == 0)
+        u.uhunger--;
 
     if (moves % 2) {    /* odd turns */
         /* Regeneration uses up food, unless due to an artifact.  Note: assumes
