@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-13 */
+/* Last modified by Alex Smith, 2021-07-05 */
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989.              */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -91,6 +91,28 @@ pick_move:
         goto pick_move;
     }
 
+    /* the monster won't walk onto the location where it thinks you are (because
+       we didn't set ALLOW_MUXY); however, it might accidentally try to walk
+       onto the location where you actually are, if it thinks you're somewhere
+       else */
+    if (nix == u.ux && niy == u.uy) {
+        /* the mtame check is probably paranoia, but may as well... */
+        if (u.uundetected) {
+            if (canseemon(mtmp))
+                pline(mtmp->mtame ? msgc_petneutral : msgc_monneutral,
+                      "%s seems suspicious of your location.", Monnam(mtmp));
+        } else {
+            if (cansee(mtmp->mx, mtmp->my))
+                pline(mtmp->mtame ? msgc_petneutral : msgc_monneutral,
+                      "%s accidentally walks into you.", Monnam(mtmp));
+            /* now the monster knows where you are */
+            mtmp->mux = u.ux;
+            mtmp->muy = u.uy;
+        }
+        /* it doesn't move, so as to avoid moving onto your square */
+        return 0;
+    }
+
     if (nix != omx || niy != omy) {
         remove_monster(level, omx, omy);
         place_monster(mtmp, nix, niy);
@@ -98,7 +120,6 @@ pick_move:
         if (mtmp->isshk && !in_his_shop && inhishop(mtmp))
             check_special_room(FALSE);
         if (ib) {
-            /* the mtame check is probably paranoia, but may as well... */
             if (cansee(mtmp->mx, mtmp->my))
                 pline(mtmp->mtame ? msgc_petneutral : msgc_monneutral,
                       "%s picks up %s.", Monnam(mtmp),
@@ -204,7 +225,7 @@ priestini(struct level *lev, struct mkroom *sroom, int sx, int sy,
          (priest_pos < pos_array + ARRAY_SIZE(pos_array) - 1);
          ++priest_pos)
          {}
-    
+
     if (!isok(priest_pos->x, priest_pos->y)) {
         impossible("Unable to find location for priest in shrine");
     } else {
@@ -437,7 +458,7 @@ intemple(int roomno)
             if (!rn2(5)) {
                 struct monst *mtmp;
 
-                if (!((mtmp = makemon(&mons[PM_GHOST], level, 
+                if (!((mtmp = makemon(&mons[PM_GHOST], level,
                                       u.ux, u.uy, NO_MM_FLAGS))))
                     return;
                 if (!Blind || sensemon(mtmp))
@@ -446,7 +467,7 @@ intemple(int roomno)
                 else
                     pline(msgc_statusbad, "You sense a presence close by!");
                 msethostility(mtmp, TRUE, TRUE);
-                pline_implied(msgc_statusbad, 
+                pline_implied(msgc_statusbad,
                     "You are frightened to death, and unable to move.");
                 helpless(3, hr_afraid, "frightened to death",
                          "You regain your composure.");
@@ -607,7 +628,7 @@ reset_hostility(struct monst *roamer)
 }
 
 boolean
-in_your_sanctuary(struct monst *mon,    /* if non-null, <mx,my> overrides <x,y> 
+in_your_sanctuary(struct monst *mon,    /* if non-null, <mx,my> overrides <x,y>
                                          */
                   xchar x, xchar y)
 {
@@ -713,7 +734,7 @@ angry_priest(void)
 
     if ((priest = findpriest(temple_occupied(u.urooms))) != 0) {
         wakeup(priest, FALSE);
-        /* 
+        /*
          * If the altar has been destroyed or converted, let the
          * priest run loose.
          * (When it's just a conversion and there happens to be
@@ -761,4 +782,3 @@ restpriest(struct monst *mtmp, boolean ghostly)
 }
 
 /*priest.c*/
-
