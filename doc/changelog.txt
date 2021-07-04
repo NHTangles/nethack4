@@ -1,5 +1,5 @@
 About this document:
-Last modified by Alex Smith, 2016-03-08
+Last modified by Alex Smith, 2021-07-05
 
 Copyright (C) 2013 Alex Smith.
 
@@ -2046,6 +2046,11 @@ Since 4.3-beta2
 
 Figurines no longer look like monsters in the ASCII and Unicode tilesets.
 (e4e9caa)
+
+Shopkeepers and priests who don't know your location can no longer
+successfully walk onto your actual location if they attempt to move there
+(causing a save file desync because a monster and a player are on the same
+square); they bump into you instead. (c891774)
 
 Since 4.3-beta1
 ---------------
