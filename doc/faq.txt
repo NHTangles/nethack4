@@ -1,5 +1,5 @@
 About this document:
-Last modified by Alex Smith, 2015-04-01
+Last modified by Alex Smith, 2021-12-29
 
 Copyright (C) 2013 Alex Smith.
 
@@ -208,16 +208,11 @@ the code and otherwise modify the game as you like.
 How can I play on a public server?
 ----------------------------------
 
-The official (and to our knowledge, only) public server is nethack4.org.  Open
-a terminal in your favourite terminal emulator, and use telnet (default
-settings) or ssh (username "nethack43", password "nethack43") to connect. At
-the command prompt:
+The official public server is nethack4.org.  Open a terminal in your favourite
+terminal emulator, and use telnet (default settings) to connect. At the
+command prompt:
 
     telnet nethack4.org
-
-or
-
-    ssh nethack43@nethack4.org
 
 You'll be asked to give a username and password upon connecting; if you use a
 currently unknown username, you'll be prompted to create an account.
@@ -236,6 +231,14 @@ called "NetHack mode"; this is a workaround for keybinding issues in
 considerably older (pre-3.4.3) versions of NetHack, and is more harmful than
 useful with NetHack 4, so try to get things working with it turned off first,
 and use it only as a last resort.
+
+NetHack 4 is also playable on hardfought.org.  You can connect there via
+ssh (username "nethack"), so the command is:
+
+    ssh nethack@hardfought.org
+
+or play via the website at https://www.hardfought.org/nethack/hterm/.  The site
+supports a number of NetHack variants, including NetHack 4.
 
 
 How can I compile the game for local play?
