@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Fredrik Ljungdahl, 2018-01-06 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Steve Creps, 1988.                               */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -749,6 +749,7 @@ extern boolean has_terrain(struct level *lev, schar typ);
 
 extern void new_light_source(struct level *lev, xchar x, xchar y, int range,
                              int type, void *id);
+extern void new_default_object_light(struct obj *);
 extern void del_light_source(struct level *lev, int type, void *id);
 extern void do_light_sources(char **);
 extern struct monst *find_mid(struct level *lev, unsigned nid,
@@ -767,7 +768,8 @@ extern boolean obj_sheds_light(struct obj *);
 extern boolean obj_is_burning(struct obj *);
 extern void obj_split_light_source(struct obj *, struct obj *);
 extern void obj_merge_light_sources(struct obj *, struct obj *);
-extern int candle_light_range(struct obj *);
+extern void suppress_monster_light(struct monst *);
+extern void recalculate_monster_light(struct monst *);
 extern int wiz_light_sources(const struct nh_cmd_arg *);
 
 /* ### localtime.c ### */

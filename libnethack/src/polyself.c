@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-13 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -337,6 +337,9 @@ made_change:
        nh_create_game(). */
     new_light = Upolyd ? emits_light(youmonst.data) : 0;
     if (old_light != new_light) {
+        /* note: not recalculate_monster_light; we don't need to mess with
+           lights in the player's inventory and the radius is calculated
+           differently */
         if (old_light)
             del_light_source(level, LS_MONSTER, &youmonst);
         if (new_light == 1)

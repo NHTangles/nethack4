@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2019-01-03 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -973,7 +973,6 @@ burn_object(void *arg, long timeout)
 void
 begin_burn(struct obj *obj, boolean already_lit)
 {
-    int radius = 3;
     long turns = 0;
     boolean do_timer = TRUE;
 
@@ -988,7 +987,6 @@ begin_burn(struct obj *obj, boolean already_lit)
 
     case POT_OIL:
         turns = obj->age;
-        radius = 1;     /* very dim light */
         break;
 
     case BRASS_LANTERN:
@@ -1016,7 +1014,6 @@ begin_burn(struct obj *obj, boolean already_lit)
             turns = obj->age - 15L;
         else
             turns = obj->age;
-        radius = candle_light_range(obj);
         break;
 
     default:
@@ -1024,7 +1021,6 @@ begin_burn(struct obj *obj, boolean already_lit)
         if (artifact_light(obj)) {
             obj->lamplit = 1;
             do_timer = FALSE;
-            radius = 2;
         } else {
             impossible("begin burn: unexpected %s", xname(obj));
             turns = obj->age;
@@ -1046,14 +1042,8 @@ begin_burn(struct obj *obj, boolean already_lit)
             update_inventory();
     }
 
-    if (obj->lamplit && !already_lit) {
-        xchar x, y;
-
-        if (get_obj_location(obj, &x, &y, CONTAINED_TOO | BURIED_TOO))
-            new_light_source(level, x, y, radius, LS_OBJECT, obj);
-        else
-            impossible("begin_burn: can't get obj position");
-    }
+    if (obj->lamplit && !already_lit)
+        new_default_object_light(obj);
 }
 
 /*

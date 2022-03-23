@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2016-06-30 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1526,13 +1526,9 @@ replmon(struct monst *mtmp, struct monst *mtmp2)
         place_monster(mtmp2, mtmp2->mx, mtmp2->my);
     if (mtmp2->wormno)  /* update level->monsters[wseg->wx][wseg->wy] */
         place_wsegs(mtmp2);     /* locations to mtmp2 not mtmp. */
-    if (emits_light(mtmp2->data)) {
-        /* since this is so rare, we don't have any `mon_move_light_source' */
-        new_light_source(mtmp2->dlevel, mtmp2->mx, mtmp2->my,
-                         emits_light(mtmp2->data), LS_MONSTER, mtmp2);
-        /* here we rely on the fact that `mtmp' hasn't actually been deleted */
-        del_light_source(mtmp->dlevel, LS_MONSTER, mtmp);
-    }
+    if (emits_light(mtmp2->data))
+        recalculate_monster_light(mtmp);
+
     mtmp2->nmon = mtmp2->dlevel->monlist;
     mtmp2->dlevel->monlist = mtmp2;
     if (u.ustuck == mtmp)
@@ -2832,15 +2828,9 @@ newcham(struct monst *mtmp, const struct permonst *mdat,
     /* take on the new form... */
     set_mon_data(mtmp, mdat, 0);
 
-    if (emits_light(olddata) != emits_light(mtmp->data)) {
-        /* used to give light, now doesn't, or vice versa, or light's range has
-           changed */
-        if (emits_light(olddata))
-            del_light_source(mtmp->dlevel, LS_MONSTER, mtmp);
-        if (emits_light(mtmp->data))
-            new_light_source(mtmp->dlevel, mtmp->mx, mtmp->my,
-                             emits_light(mtmp->data), LS_MONSTER, mtmp);
-    }
+    if (emits_light(olddata) != emits_light(mtmp->data))
+        recalculate_monster_light(mtmp);
+
     if (!mtmp->perminvis || pm_invisible(olddata))
         mtmp->perminvis = pm_invisible(mdat);
     mtmp->minvis = mtmp->invis_blkd ? 0 : mtmp->perminvis;

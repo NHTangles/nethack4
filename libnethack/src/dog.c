@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-13 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -221,12 +221,20 @@ losedogs(void)
             else
                 mtmp0->nmon = mtmp->nmon;
             mon_arrive(mtmp, FALSE);
+            /* when we remove a monster from the main migration chain, we need
+               to relight any suppressed light sources */
+            recalculate_monster_light(mtmp);
         } else
             mtmp0 = mtmp;
     }
 }
 
-/* called from resurrect() in addition to losedogs() */
+/* called from resurrect() in addition to losedogs()
+
+   The caller is responsible for calling recalculate_monster_light() after the
+   monster has been placed, if necessary (this is necessary if the monster comes
+   from the (global) migrating monster chain as opposed to the (turnstate)
+   migrating pet chain). */
 void
 mon_arrive(struct monst *mtmp, boolean with_you)
 {
@@ -633,6 +641,8 @@ migrate_to_level(struct monst *mtmp, xchar tolev,       /* destination level */
         num_segs = min(cnt, MAX_NUM_WORMS - 1);
         wormgone(mtmp);
     }
+
+    suppress_monster_light(mtmp);
 
     /* set minvent's obj->no_charge to 0 */
     for (obj = mtmp->minvent; obj; obj = obj->nobj) {
