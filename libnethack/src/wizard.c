@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-13 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -781,6 +781,7 @@ resurrect(void)
                 if (mtmp->mcanmove && !mtmp->msleeping) {
                     *mmtmp = mtmp->nmon;
                     mon_arrive(mtmp, TRUE);
+                    recalculate_monster_light(mtmp);
                     /* note: there might be a second Wizard; if so, he'll have
                        to wait til the next resurrection */
                     break;

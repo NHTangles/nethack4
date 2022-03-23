@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-11-11 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -801,9 +801,8 @@ clone_mon(struct monst *mon, xchar x, xchar y)
         m2->ispriest = FALSE;
     m2->mxlth = 0;
     place_monster(m2, m2->mx, m2->my);
-    if (emits_light(m2->data))
-        new_light_source(m2->dlevel, m2->mx, m2->my, emits_light(m2->data),
-                         LS_MONSTER, m2);
+    recalculate_monster_light(m2);
+
     if (m2->mnamelth) {
         m2->mnamelth = 0;       /* or it won't get allocated */
         m2 = christen_monst(m2, NAME(mon));
@@ -895,7 +894,7 @@ makemon(const struct permonst *ptr, struct level *lev, int x, int y,
         int mmflags)
 {
     struct monst *mtmp;
-    int mndx, mcham, ct, mitem, xtyp;
+    int mndx, mcham, mitem, xtyp;
     boolean anymon = (!ptr);
     boolean byyou = (x == u.ux && y == u.uy);
     boolean allow_minvent = ((mmflags & NO_MINVENT) == 0);
@@ -1116,8 +1115,9 @@ makemon(const struct permonst *ptr, struct level *lev, int x, int y,
             mon_adjust_speed(mtmp, 2, NULL);
         break;
     }
-    if ((ct = emits_light(mtmp->data)) > 0)
-        new_light_source(lev, mtmp->mx, mtmp->my, ct, LS_MONSTER, mtmp);
+
+    recalculate_monster_light(mtmp);
+
     mitem = 0;  /* extra inventory item for this monster */
 
     if ((mcham = pm_to_cham(mndx)) != CHAM_ORDINARY) {

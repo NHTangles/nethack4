@@ -43,6 +43,8 @@ static void write_ls(struct memfile *mf, light_source *);
 static int maybe_write_ls(struct memfile *mf, struct level *lev, int range,
                           boolean write_it);
 
+static int object_light_radius(const struct obj *);
+
 /* Create a new light source.  */
 void
 new_light_source(struct level *lev, xchar x, xchar y, int range, int type,
@@ -69,10 +71,22 @@ new_light_source(struct level *lev, xchar x, xchar y, int range, int type,
     turnstate.vision_full_recalc = TRUE;     /* make the source show up */
 }
 
-/*
- * Delete a light source. This assumes only one light source is attached
- * to an object at a time.
- */
+/* Create a new light source for an object, with appropriate defaults for the
+   type of object. (It must be an object that can be lit, but there is no check
+   that the object actually is lit.) */
+void
+new_default_object_light(struct obj *otmp)
+{
+    /* split out from begin_burn */
+    xchar x, y;
+    if (get_obj_location(otmp, &x, &y, CONTAINED_TOO | BURIED_TOO))
+        new_light_source(otmp->olev, x, y, object_light_radius(otmp), LS_OBJECT, otmp);
+    else
+        impossible("new_default_object_light: can't get obj position");
+}
+
+/* Delete a light source. This assumes only one light source is attached
+   to an object at a time. */
 void
 del_light_source(struct level *lev, int type, void *id)
 {
@@ -110,6 +124,10 @@ del_light_source(struct level *lev, int type, void *id)
             return;
         }
     }
+    /* note: if this impossible is hit, it may be that we're trying to remove a
+       light source that was suppressed due to being, or being in the inventory
+       of, a migrating monster - to fix it, ensure that timers associated with
+       such monsters don't run until they're back on the map */
     impossible("del_light_source: not found type=%d, id=%p", type, id);
 }
 
@@ -126,7 +144,7 @@ do_light_sources(char **cs_rows)
     for (ls = level->lev_lights; ls; ls = ls->next) {
         ls->flags &= ~LSF_SHOW;
 
-        /* 
+        /*
          * Check for moved light sources.  It may be possible to
          * save some effort if an object has not moved, but not in
          * the current setup -- we need to recalculate for every
@@ -150,7 +168,7 @@ do_light_sources(char **cs_rows)
         }
 
         if (ls->flags & LSF_SHOW) {
-            /* 
+            /*
              * Walk the points in the circle and see if they are
              * visible from the center.  If so, mark'em.
              *
@@ -457,8 +475,8 @@ snuff_light_source(int x, int y)
     struct obj *obj;
 
     for (ls = level->lev_lights; ls; ls = ls->next)
-        /* 
-           Is this position check valid??? Can I assume that the positions will 
+        /*
+           Is this position check valid??? Can I assume that the positions will
            always be correct because the objects would have been updated with
            the last vision update? [Is that recent enough???] */
         if (ls->type == LS_OBJECT && ls->x == x && ls->y == y) {
@@ -471,7 +489,7 @@ snuff_light_source(int x, int y)
                 if (artifact_light(obj))
                     continue;
                 end_burn(obj, obj->otyp != MAGIC_LAMP);
-                /* 
+                /*
                  * The current ls element has just been removed (and
                  * ls->next is now invalid).  Return assuming that there
                  * is only one light source attached to each object.
@@ -505,7 +523,7 @@ obj_split_light_source(struct obj *src, struct obj *dest)
 
     for (ls = level->lev_lights; ls; ls = ls->next)
         if (ls->type == LS_OBJECT && ls->id == src) {
-            /* 
+            /*
              * Insert the new source at beginning of list.  This will
              * never interfere us walking down the list - we are already
              * past the insertion point.
@@ -514,8 +532,8 @@ obj_split_light_source(struct obj *src, struct obj *dest)
             *new_ls = *ls;
             if (Is_candle(src)) {
                 /* split candles may emit less light than original group */
-                ls->range = candle_light_range(src);
-                new_ls->range = candle_light_range(dest);
+                ls->range = object_light_radius(src);
+                new_ls->range = object_light_radius(dest);
                 turnstate.vision_full_recalc = TRUE; /* in case range changed */
             }
             new_ls->id = dest;
@@ -538,21 +556,22 @@ obj_merge_light_sources(struct obj *src, struct obj *dest)
 
     for (ls = level->lev_lights; ls; ls = ls->next)
         if (ls->type == LS_OBJECT && ls->id == dest) {
-            ls->range = candle_light_range(dest);
+            ls->range = object_light_radius(dest);
             turnstate.vision_full_recalc = TRUE;     /* in case range changed */
             break;
         }
 }
 
-/* Candlelight is proportional to the number of candles;
-   minimum range is 2 rather than 1 for playability. */
-int
-candle_light_range(struct obj *obj)
+/* Returns the light radius that the given object should shine.  This method
+   should only be called on objects that are lit, or that can be lit and that
+   the caller is about to light. */
+static int
+object_light_radius(const struct obj *obj)
 {
     int radius;
 
     if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
-        /* 
+        /*
          *      The special candelabrum emits more light than the
          *      corresponding number of candles would.
          *       1..3 candles, range 2 (minimum range);
@@ -561,7 +580,7 @@ candle_light_range(struct obj *obj)
          */
         radius = (obj->spe < 4) ? 2 : (obj->spe < 7) ? 3 : 4;
     } else if (Is_candle(obj)) {
-        /* 
+        /*
          *      Range is incremented by powers of 7 so that it will take
          *      wizard mode quantities of candles to get more light than
          *      from a lamp, without imposing an arbitrary limit.
@@ -576,12 +595,87 @@ candle_light_range(struct obj *obj)
             radius++;
             n /= 7L;
         } while (n > 0L);
+    } else if (obj->otyp == BRASS_LANTERN || obj->otyp == MAGIC_LAMP ||
+               obj->otyp == OIL_LAMP) {
+        radius = 3;
+    } else if (obj->otyp == POT_OIL) {
+        radius = 1;
+    } else if (artifact_light(obj)) {
+        radius = 2;
     } else {
-        /* we're only called for lit candelabrum or candles */
-        /* impossible("candlelight for %d?", obj->otyp); */
-        radius = 3;     /* lamp's value */
+        impossible("Calculating light range for object type %d?", obj->otyp);
+        radius = 3;
     }
+
     return radius;
+}
+
+/* Forgets about all light sources attached to mtmp or its inventory.  This is
+   used when the monster is sent off-level; there's no need to store the
+   monster's lighting in that situation because we can recreate it.
+
+   This doesn't change lighting state, just the light sources themselves, e.g. a
+   suppressed lit lamp will continue to be lit but will not produce any
+   light. */
+void
+suppress_monster_light(struct monst *mtmp)
+{
+    light_source **prev, *curr;
+
+    /* this case won't work because we're doing an mcarried check, and
+       suppression isn't meant to be used for the player's inventory anyway */
+    if (mtmp == &youmonst)
+        panic("attempting to suppress the player's light");
+
+    /* iteration code based on transfer_lights */
+    for (prev = &(mtmp->dlevel->lev_lights); ((curr = *prev)) != 0;) {
+        boolean suppress = FALSE;
+        switch (curr->type) {
+        case LS_OBJECT: {
+            struct obj *otmp = (struct obj *)curr->id;
+            while (otmp->where == OBJ_CONTAINED)
+                otmp = otmp->ocontainer;
+            suppress = mcarried(otmp) && otmp->ocarry == mtmp;
+            break;
+        }
+        case LS_MONSTER:
+            suppress = (struct monst *)curr->id == mtmp;
+            break;
+        default:
+            break;
+        }
+
+        if (suppress) {
+            *prev = curr->next;
+            free(curr);
+            turnstate.vision_full_recalc = TRUE;
+        } else {
+            prev = &(*prev)->next;
+        }
+    }
+}
+
+/* Recalculate all light sources attached to mtmp and its inventory from
+   scratch.
+
+   This can be used to undo the effect of suppress_monster_light, to update
+   light sources after a monster has polymorphed into something that emits a
+   different level of light, or to light a monster correctly upon its creation.
+   (However, mtmp's dlevel must be set correctly before calling this
+   routine.) */
+void
+recalculate_monster_light(struct monst *mtmp)
+{
+    suppress_monster_light(mtmp);
+
+    if (emits_light(mtmp->data))
+        new_light_source(mtmp->dlevel, mtmp->mx, mtmp->my,
+                         emits_light(mtmp->data), LS_MONSTER, mtmp);
+
+    for (struct obj *otmp = m_minvent(mtmp); otmp; otmp = otmp->nobj) {
+        if (obj_sheds_light(otmp))
+            new_default_object_light(otmp);
+    }
 }
 
 
@@ -625,4 +719,3 @@ wiz_light_sources(const struct nh_cmd_arg *arg)
 }
 
 /*light.c*/
-

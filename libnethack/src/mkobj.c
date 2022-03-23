@@ -1,5 +1,5 @@
 /* vim:set cin ft=c sw=4 sts=4 ts=8 et ai cino=Ls\:0t0(0 : -*- mode:c;fill-column:80;tab-width:8;c-basic-offset:4;indent-tabs-mode:nil;c-file-style:"k&r" -*-*/
-/* Last modified by Alex Smith, 2015-10-11 */
+/* Last modified by Alex Smith, 2022-03-23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1633,8 +1633,7 @@ dealloc_obj(struct obj *obj)
 
 
 /* update which level the object points back to when it, its container or the
- * monster holding it migrate.
- */
+   monster holding it migrate. */
 void
 set_obj_level(struct level *lev, struct obj *obj)
 {
@@ -1642,7 +1641,10 @@ set_obj_level(struct level *lev, struct obj *obj)
 
     if (obj->timed)
 	transfer_timers(obj->olev, lev, obj->o_id);
-    if (obj->lamplit)
+    /* note: an item that's mcarried by a migrating monster never has a light
+       source attached, even if it's lit, so we don't need to try to transfer
+       them (the transfer would fail due to not knowing where the monster is) */
+    if (obj->lamplit && (!mcarried(obj) || obj->ocarry->dlevel != NULL))
 	transfer_lights(obj->olev, lev, obj->o_id);
 
     obj->olev = lev;
